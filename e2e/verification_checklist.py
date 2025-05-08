@@ -11,6 +11,7 @@ Input arguments:
     --file-path: The path to the HTML report file.
     --output-path: The path of the output file.
     --format: The format of the output file. Default is "DOCX", the other option is "QMD".
+    --genialis-base-version: The Genialis base version used in the tested deploy.
 """
 
 import argparse
@@ -65,6 +66,13 @@ parser.add_argument(
     default="DOCX",
     help="The format of the output file.",
     choices=["QMD", "DOCX"],
+)
+parser.add_argument(
+    "-v",
+    "--genialis-base-version",
+    type=str,
+    help="Genialis base version used in the tested deploy.",
+    required=True,
 )
 
 
@@ -278,7 +286,9 @@ if __name__ == "__main__":
     if args.format == "QMD":
         qmd_path = out_file_path.with_suffix(".qmd")
         title = title = (
-            "---\n" f"title: DictyExpress | {deploy} | E2E | {date_string}\n" "---\n\n"
+            "---\n"
+            f"title: {date_string} | {args.genialis_base_version} | DictyExpress {deploy} | E2E\n"
+            "---\n\n"
         )
         pypandoc.convert_file(docx_path, "md", outputfile=qmd_path)
         with open(qmd_path, "r+") as file:
