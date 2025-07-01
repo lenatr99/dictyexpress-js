@@ -3,12 +3,12 @@ name: Dictyexpress-js CI
 on:
   push:
     branches:
-      - master
+      - main
     tags:
       - "[0-9]+.[0-9]+.[0-9]+*"
   pull_request:
     branches:
-      - master
+      - main
   workflow_dispatch:
 
 jobs:
