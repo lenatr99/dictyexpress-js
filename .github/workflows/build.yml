@@ -19,7 +19,7 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ vars.DOCKER_RUNNER_SCALE_SET || 'private-docker-runner' }}
+    runs-on: public-docker-runner
     strategy:
       matrix:
         node-version: [20]

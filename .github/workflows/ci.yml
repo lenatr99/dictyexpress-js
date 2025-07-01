@@ -13,7 +13,7 @@ on:
 
 jobs:
   test:
-    runs-on: ${{ vars.DOCKER_RUNNER_SCALE_SET || 'private-docker-runner' }}
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         node-version: [20]
