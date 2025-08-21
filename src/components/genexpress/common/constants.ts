@@ -5,6 +5,7 @@ export enum LocalStorageKey {
 
 export enum ModulesKeys {
     timeSeriesAndGeneSelector = 'timeSeriesAndGeneSelector',
+    singleCellSeriesSelector = 'singleCellSeriesSelector',
     expressionTimeCourses = 'expressionTimeCourses',
     differentialExpressions = 'differentialExpressions',
     gOEnrichment = 'gOEnrichment',

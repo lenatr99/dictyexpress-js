@@ -4,6 +4,7 @@ import { connect, ConnectedProps, useDispatch } from 'react-redux';
 import _ from 'lodash';
 import { useLocation } from 'react-router-dom';
 import TimeSeriesAndGeneSelector from './modules/timeSeriesAndGeneSelector/timeSeriesAndGeneSelector';
+import SingleCellSeriesSelector from './modules/SingleCellSeriesSelector/SingleCellSeriesSelector';
 import DictyModule from './common/dictyModule/dictyModule';
 import SnackbarNotifier from './snackbarNotifier/snackbarNotifier';
 import GenexpressAppBar from './genexpressAppBar/genexpressAppBar';
@@ -80,6 +81,9 @@ const GeneExpressGrid = ({
 
     // This page is the entry point for geneExpress. Handle app initialization here.
     useEffect(() => {
+        console.log('🌟 DICTYEXPRESS APP INITIALIZING...');
+        console.log('🔥 Dispatching appStarted() - This will trigger all initial API calls');
+        console.log('═══════════════════════════════════════════');
         dispatch(appStarted());
     }, [dispatch]);
 
@@ -177,6 +181,14 @@ const GeneExpressGrid = ({
                             <Clustering />
                         </DictyModule>
                     </div>
+                    {/* <div key={ModulesKeys.singleCellSeriesSelector}>
+                        <DictyModule
+                            title="Single Cell Series Selection"
+                            isLoading={isFetchingTimeSeries || isAddingToBasket}
+                        >
+                            <SingleCellSeriesSelector />
+                        </DictyModule>
+                    </div> */}
                 </ResponsiveGridLayout>
             </ResponsiveGridLayoutContainer>
         </>

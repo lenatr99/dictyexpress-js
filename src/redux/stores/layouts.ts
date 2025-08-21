@@ -116,6 +116,16 @@ const getBreakpointLayouts = (breakpoint: LayoutBreakpoint): Layout[] => {
                 small: defaultBreakpointCols.small,
             }[breakpoint],
         ),
+        generateModuleLayout(
+            ModulesKeys.singleCellSeriesSelector,
+            breakpoint,
+            availableSpaceInCols,
+            {
+                large: 6,
+                mid: 5,
+                small: defaultBreakpointCols.small,
+            }[breakpoint],
+        ),
     ];
 };
 

@@ -144,12 +144,17 @@ const DifferentialExpressions = ({
             return;
         }
 
+        // Ensure prob_field exists and the corresponding data exists in JSON
+        const probFieldKey = selectedDifferentialExpression.prob_field || 'fdr';
+        if (!selectedDifferentialExpression.json[probFieldKey]) {
+            setVolcanoPoints([]);
+            return;
+        }
+
         const tempVolcanoData: Omit<VolcanoPoint, 'logProbFiniteValue'>[] =
             selectedDifferentialExpression.json.gene_id.map((geneId: string, index: number) => {
                 const probValue =
-                    selectedDifferentialExpression.json[selectedDifferentialExpression.prob_field][
-                        index
-                    ];
+                    selectedDifferentialExpression.json[probFieldKey][index];
 
                 const volcanoDatum: Omit<VolcanoPoint, 'logProbFiniteValue'> = {
                     geneId,

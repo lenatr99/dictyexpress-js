@@ -13,7 +13,17 @@ const timeSeriesByIdSlice = createSlice({
     initialState: timeSeriesByIdInitialState,
     reducers: {
         fetchSucceeded: (_state, action: PayloadAction<Relation[]>): RelationsById => {
-            return _.keyBy(action.payload, 'id');
+            console.log('🔄 TIME SERIES STATE CHANGE:');
+            console.log('  API Response:', action.payload.length, 'time series fetched');
+            console.log('  New time series:', action.payload.map(ts => ({id: ts.id, object: ts})));
+            
+            const newState = _.keyBy(action.payload, 'id');
+            
+            console.log('  Updated state:', Object.keys(newState).length, 'total time series');
+            console.log('  Time series IDs:', Object.keys(newState));
+            console.log('─────────────────────────────────────────');
+            
+            return newState;
         },
         genesMappingsFetchSucceeded: (
             state,

@@ -9,6 +9,11 @@ const userSlice = createSlice({
     initialState: userInitialState,
     reducers: {
         fetchSucceeded: (_state, action: PayloadAction<User | undefined>): User => {
+            console.log('👤 USER AUTHENTICATION STATE CHANGE:');
+            console.log('  User fetched:', action.payload ? `${action.payload.first_name} ${action.payload.last_name}` : 'Anonymous');
+            console.log('  User ID:', action.payload?.id);
+            console.log('─────────────────────────────────────────');
+            
             return action.payload ?? userInitialState;
         },
     },

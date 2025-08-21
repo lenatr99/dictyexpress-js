@@ -55,11 +55,20 @@ const getTimeSeriesGenesExpressions = (
     samplesExpressionsSamplesIds: number[],
     genesMappings?: GeneMapping[],
 ): GeneExpression[] => {
+    console.log('🔬 COMPUTING GENE EXPRESSIONS:');
+    console.log('  Time series:', singleTimeSeries?.collection?.name);
+    console.log('  Labels (time points):', labels);
+    console.log('  Selected genes:', selectedGenes.map(g => g.name));
+    console.log('  Samples available:', samplesExpressionsSamplesIds.length);
+    console.log('  Expression storage keys:', Object.keys(samplesExpressionsById).length);
+    
     if (
         singleTimeSeries == null ||
         _.isEmpty(samplesExpressionsById) ||
         selectedGenes.length === 0
     ) {
+        console.log('  ❌ Returning empty - missing required data');
+        console.log('─────────────────────────────────────────');
         return EMPTY_ARRAY;
     }
 
@@ -112,6 +121,17 @@ const getTimeSeriesGenesExpressions = (
             }
         });
     });
+
+    console.log('  ✅ Generated gene expressions:', newGenesExpressionsData.length, 'data points');
+    if (newGenesExpressionsData.length > 0) {
+        console.log('  Sample data point:', {
+            gene: newGenesExpressionsData[0].geneName,
+            timePoint: newGenesExpressionsData[0].label,
+            value: newGenesExpressionsData[0].value,
+            timeSeries: newGenesExpressionsData[0].timeSeriesName
+        });
+    }
+    console.log('─────────────────────────────────────────');
 
     return newGenesExpressionsData;
 };

@@ -1,0 +1,22 @@
+# Original dependencies
+Django
+djangorestframework
+django-cors-headers
+
+# Resolwe dependencies
+resolwe
+resolwe-bio
+resdk
+
+# Additional dependencies required by Resolwe
+psycopg2-binary
+redis
+celery
+channels
+daphne
+django-guardian
+django-mathfilters
+django-versionfield
+jsonschema
+
+

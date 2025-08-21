@@ -4,7 +4,7 @@ import svgr from 'vite-plugin-svgr';
 import viteTsconfigPaths from 'vite-tsconfig-paths';
 import type { PluginOption, ProxyOptions } from 'vite';
 
-const targetDomain = 'qa.genialis.io';
+const targetDomain = 'localhost:8000';
 const secure = false;
 
 const wsProxyConfig: ProxyOptions = {
@@ -20,12 +20,12 @@ const wsProxyConfig: ProxyOptions = {
 };
 
 const proxyConfig: ProxyOptions = {
-    target: `https://${targetDomain}`,
+    target: `http://${targetDomain}`,  // Use HTTP for local Django backend
     secure,
     changeOrigin: true,
     headers: {
         Host: targetDomain,
-        Origin: `https://${targetDomain}`,
+        Origin: `http://${targetDomain}`,  // Use HTTP for local Django backend
         Connection: 'keep-alive',
     },
 };

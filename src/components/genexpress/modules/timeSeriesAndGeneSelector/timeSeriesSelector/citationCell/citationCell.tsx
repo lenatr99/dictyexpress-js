@@ -14,7 +14,7 @@ import { DescriptorSchemaSlug } from 'components/genexpress/common/constants';
 const CitationCell = ({
     data,
 }: {
-    data: Relation & { descriptor: Descriptor[DescriptorSchemaSlug.DictyTimeSeries] };
+    data?: Relation & { descriptor?: Descriptor[DescriptorSchemaSlug.DictyTimeSeries] };
 }): ReactElement => {
     const [isCitationDialogOpened, setIsCitationDialogOpened] = useState(false);
 
@@ -22,7 +22,7 @@ const CitationCell = ({
         setIsCitationDialogOpened(false);
     }, []);
 
-    if (data.descriptor.citation == null) {
+    if (!data || !data.descriptor || data.descriptor.citation == null) {
         return <></>;
     }
 
@@ -46,8 +46,8 @@ const CitationCell = ({
                 <CenteredModal open aria-labelledby="modalTitle" onClose={onClose}>
                     <ModalContainer>
                         <ModalHeader id="modalTitle">
-                            {data.descriptor.project ?? data.collection.name}{' '}
-                            {data.descriptor.details}
+                            {data.descriptor?.project ?? data.collection?.name}{' '}
+                            {data.descriptor?.details}
                         </ModalHeader>
                         <ModalBody>
                             If you want to use this data in your research, cite:

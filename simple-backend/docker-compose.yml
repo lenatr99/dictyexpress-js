@@ -1,0 +1,133 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: dictyexpress_resolwe
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dictyexpress_resolwe"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/entrypoint.sh"]
+    command: python manage.py runserver 0.0.0.0:8000 --settings=dictyexpress_backend.settings
+    volumes:
+      - .:/app
+      - resolwe_data:/app/resolwe_data
+      - media_files:/app/media
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_NAME=dictyexpress_resolwe
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=password
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=dictyexpress_backend.settings
+      - RUN_MIGRATIONS=1
+      - SEED=1
+    healthcheck:
+      test: ["CMD-SHELL", "python manage.py migrate --check --noinput"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/entrypoint.sh"]
+    command: celery -A dictyexpress_backend worker -l info
+    volumes:
+      - .:/app
+      - resolwe_data:/app/resolwe_data
+      - media_files:/app/media
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DATABASE_NAME=dictyexpress_resolwe
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=password
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=dictyexpress_backend.settings
+    depends_on:
+      web:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/entrypoint.sh"]
+    command: celery -A dictyexpress_backend beat -l info
+    volumes:
+      - .:/app
+      - resolwe_data:/app/resolwe_data
+    environment:
+      - DATABASE_NAME=dictyexpress_resolwe
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=password
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=dictyexpress_backend.settings
+    depends_on:
+      web:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+
+volumes:
+  postgres_data:
+  redis_data:
+  resolwe_data:
+  media_files:
+  pgadmin_data:

@@ -41,7 +41,7 @@
         "vega-tooltip": "^0.34.0"
     },
     "scripts": {
-        "start": "vite",
+        "start": "vite --force",
         "serve": "vite preview",
         "build": "vite build",
         "test": "vitest",
