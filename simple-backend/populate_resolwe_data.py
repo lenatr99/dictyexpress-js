@@ -83,7 +83,6 @@ def create_collections(collections):
         slug = raw.get("slug") or data.get("slug")
         if not slug:
             continue  # skip items without a slug
-        data.pop("slug", None)  # slug is the lookup, not a default
         data_id = data.pop('id', None)
         c, created = Collection.objects.update_or_create(id=data_id, defaults=data)
     print("Collections upserted.")
@@ -129,7 +128,6 @@ def create_descriptor_schemas():
         # Set the contributor to the admin user instance (not the dict from mock data)
         data["contributor"] = admin_user
 
-        data.pop("slug", None)  # slug is the lookup, not a default
         ds, created = DescriptorSchema.objects.update_or_create(id=data['id'], defaults=data)
         
         # Set public view permissions using the Permission enum
@@ -173,7 +171,6 @@ def create_relation():
 
 def get_or_create_process(input_data):
     """Create process with proper permissions"""
-    process_slug = input_data.get('slug')
     data = input_data.copy()
     data["contributor"] = admin_user
     data.pop("created", None)
@@ -193,8 +190,6 @@ def create_data(input_data):
             process_slug = data['process'].get('slug')
             if process_slug:
                 data['process'] = get_or_create_process(data['process'])
-            else:
-                data.pop('process', None)
         if 'collection' in data:
             #check if collection exists
             collection_id = data['collection'].get('id')
