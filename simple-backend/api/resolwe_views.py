@@ -5,25 +5,47 @@ Resolwe-integrated API views to replace mock data endpoints
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.db.models import Q
 from datetime import datetime
 import json
 import uuid
+from pathlib import Path
 
 # Resolwe imports
 from resolwe.flow.models import Data, DescriptorSchema, Collection, Process, Entity, Storage, RelationPartition, Relation
-from resolwe.permissions.models import Permission
-from django.contrib.auth.models import Group
-from resolwe.flow.views import DataViewSet, DescriptorSchemaViewSet, RelationViewSet, StorageViewSet
+from resolwe.flow.views import DataViewSet, DescriptorSchemaViewSet, RelationViewSet, StorageViewSet, ProcessViewSet
 from resolwe_bio.kb.views import FeatureViewSet
+from django.contrib.auth import get_user_model
 
 # In-memory storage for baskets (will be reset on server restart)
 BASKETS = {}
 
+
+@api_view(["POST"])
+def upload_file(request):
+    """
+    Minimal upload endpoint: accepts multipart/form-data with a 'file' field.
+    Saves to RESOLWE_STORAGE 'upload' bucket and returns the stored filename.
+    """
+    up = request.FILES.get("file")
+    if not up:
+        return Response({"error": "Missing 'file' field"}, status=400)
+
+    # Where Resolwe stores uploads (local connector + 'upload' mapping)
+    base = Path(settings.RESOLWE_STORAGE["connectors"]["local"]["config"]["path"])
+    upload_dir = base / "upload"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    dest = upload_dir / up.name
+    with dest.open("wb+") as fh:
+        for chunk in up.chunks():
+            fh.write(chunk)
+
+    # Return the relative filename; you'll use this under input.exp / input.rc
+    return Response({"filename": up.name})
 
 
 
@@ -51,13 +73,118 @@ def descriptor_schema_api(request):
 def relation_api(request):
     view = RelationViewSet.as_view({"get": "list"})
     return view(request._request)
+
+
+@api_view(["GET", "POST"])
+def process_api(request):
+    view = ProcessViewSet.as_view({"get": "list"})
+    return view(request._request)
+
         
-# Function-based view for URL compatibility
-@api_view(["GET"])
+# Simplified Data API - shorter version of what works
+@api_view(["GET", "POST"])
 def data_api(request, *args, **kwargs):
-    view = DataViewSet.as_view({"get": "list"})
-    response = view(request._request, *args, **kwargs)
-    return Response(response.data['results'])
+    if request.method == "GET":
+        view = DataViewSet.as_view({"get": "list"})
+        response = view(request._request, *args, **kwargs)
+        return Response(response.data['results'])
+    elif request.method == "POST":
+        # Convert process slug to ID if needed
+        process_ref = request.data.get('process')
+        
+        # Handle different process reference formats
+        if isinstance(process_ref, dict):
+            # If process_ref is a dict like {'slug': 'upload-expression'}
+            if 'slug' in process_ref:
+                process_slug = process_ref['slug']
+                try:
+                    process = Process.objects.get(slug=process_slug)
+                except Process.DoesNotExist:
+                    return Response({"process": [f"Process '{process_slug}' not found."]}, 
+                                  status=status.HTTP_400_BAD_REQUEST)
+            elif 'id' in process_ref:
+                process_id = process_ref['id']
+                try:
+                    process = Process.objects.get(id=process_id)
+                except Process.DoesNotExist:
+                    return Response({"process": [f"Process ID {process_id} not found."]}, 
+                                  status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"process": ["Invalid process reference format."]}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+        elif isinstance(process_ref, str):
+            try:
+                process = Process.objects.get(slug=process_ref)
+            except Process.DoesNotExist:
+                return Response({"process": [f"Process '{process_ref}' not found."]}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+        elif isinstance(process_ref, int):
+            try:
+                process = Process.objects.get(id=process_ref)
+            except Process.DoesNotExist:
+                return Response({"process": [f"Process ID {process_ref} not found."]}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"process": ["Process reference must be a string (slug), integer (ID), or dict with 'slug' or 'id' key."]}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get admin user and create data object
+        User = get_user_model()
+        admin_user, _ = User.objects.get_or_create(username="admin", 
+                                                  defaults={"email": "admin@example.com"})
+        
+        # Handle file inputs properly for Resolwe
+        input_data = request.data.get('input', {})
+        
+        # For upload-expression process, we need to handle the 'exp' file input
+        if 'exp' in input_data and isinstance(input_data['exp'], dict) and 'file' in input_data['exp']:
+            file_name = input_data['exp']['file']
+            # Create a simple file reference that Resolwe can work with
+            # In a real implementation, files should be uploaded to Resolwe storage first
+            input_data['exp'] = {
+                'file': file_name,
+                'file_temp': f'/app/resolwe_data/upload/{file_name}'  # Use Docker volume path
+            }
+        
+        # Create data object and trigger processing 
+        try:
+            from resolwe.flow.models import Data
+            from resolwe.flow.managers import manager
+            
+            data_obj = Data.objects.create(
+                name=request.data.get('name', 'Unnamed'),
+                process=process,
+                contributor=admin_user,
+                input=input_data,
+                tags=request.data.get('tags', [])
+            )
+            
+            # Note: The worker should automatically pick up new data objects in 'RE' status
+            print(f"Data {data_obj.id} created and ready for processing")
+                
+        except Exception as e:
+            return Response({"error": f"Data creation failed: {e}"}, 
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Note: Data starts in 'RE' (Resolving) status and will be processed by the worker
+        # Make sure Docker services are running: docker compose up -d worker listener
+        
+        return Response({
+            "id": data_obj.id,
+            "name": data_obj.name,
+            "process": {"slug": process.slug, "name": process.name},
+            "status": data_obj.status,
+            "created": data_obj.created.isoformat()
+        }, status=status.HTTP_201_CREATED)
+    
+@api_view(["POST"])
+def upload_api(request):
+    # Use the underlying Django HttpRequest and make POST mutable
+    req = request._request
+    if hasattr(req, "POST"):
+        req.POST = req.POST.copy()
+    view = UploadViewSet.as_view({"post": "create"})
+    return view(req)
 
 @api_view(["GET"])
 def storage_api(request, pk):
@@ -261,6 +388,9 @@ def gene_list_by_ids(request):
         return Response(response.data if hasattr(response, 'data') else [])
 
 
+
+
+
 @api_view(["GET"])
 def user_api(request):
     """User API"""
@@ -293,4 +423,26 @@ def user_api(request):
             {"error": f"Failed to fetch user data: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(["GET"])
+def api_root(request):
+    """API root endpoint that resdk expects."""
+    return Response({
+        "version": "1.0",
+        "description": "DictyExpress Resolwe API",
+        "endpoints": {
+            "data": "/api/data/",
+            "process": "/api/process/",
+            "user": "/api/user/",
+        }
+    })
+
+
+@api_view(["GET"])
+def resdk_version(request):
+    """Return the minimal supported resdk version."""
+    return Response({
+        "version": "1.0.0"
+    })
 
